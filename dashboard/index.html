@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hotel Bot Admin Dashboard</title>
+  <meta name="description" content="Admin dashboard for managing your WhatsApp hotel query bot" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+<!-- Auth Gate -->
+<div id="auth-gate">
+  <div class="auth-card">
+    <div style="font-size:36px;margin-bottom:16px;">🏨</div>
+    <h2>Admin Login</h2>
+    <p>Enter your admin password to access the dashboard</p>
+    <div class="form-group">
+      <input type="password" id="auth-input" placeholder="Admin password" autocomplete="current-password" />
+    </div>
+    <button class="btn btn-primary" style="width:100%;justify-content:center;" onclick="doLogin()">Unlock Dashboard</button>
+    <p id="auth-error" style="color:#fc8181;font-size:13px;margin-top:12px;display:none;">Incorrect password. Try again.</p>
+  </div>
+</div>
+
+<!-- Background Orbs -->
+<div class="bg-orb bg-orb-1"></div>
+<div class="bg-orb bg-orb-2"></div>
+
+<div class="app">
+  <!-- Header -->
+  <header class="header">
+    <div class="logo">
+      <div class="logo-icon">🏨</div>
+      <div>
+        <div class="logo-text" id="hotel-name-header">Hotel Bot</div>
+        <div class="logo-sub">WhatsApp Admin Dashboard</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="status-pill">
+        <div class="status-dot"></div>
+        Bot Online
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="doLogout()">🔓 Logout</button>
+    </div>
+  </header>
+
+  <!-- Navigation Tabs -->
+  <nav class="nav">
+    <button class="tab-btn active" id="tab-overview" onclick="switchTab('overview')">📊 Overview</button>
+    <button class="tab-btn" id="tab-rooms" onclick="switchTab('rooms')">🛏️ Rooms</button>
+    <button class="tab-btn" id="tab-faqs" onclick="switchTab('faqs')">❓ FAQs</button>
+    <button class="tab-btn" id="tab-logs" onclick="switchTab('logs')">💬 Conversations <span class="badge" id="logs-badge">0</span></button>
+    <button class="tab-btn" id="tab-test" onclick="switchTab('test')">🧪 Test Bot</button>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main">
+
+    <!-- ── OVERVIEW ── -->
+    <div class="tab-content active" id="content-overview">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Overview</div>
+          <div class="section-subtitle">Hotel status at a glance</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="loadAll()">↻ Refresh</button>
+      </div>
+
+      <div class="stats-row" id="stats-row">
+        <div class="stat-card">
+          <div class="stat-value" id="stat-total">—</div>
+          <div class="stat-label">Total Rooms</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--accent-green)" id="stat-available">—</div>
+          <div class="stat-label">Available Now</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--accent-red)" id="stat-occupied">—</div>
+          <div class="stat-label">Occupied</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--accent-yellow)" id="stat-maintenance">—</div>
+          <div class="stat-label">Maintenance</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" style="color:var(--accent-purple)" id="stat-convs">—</div>
+          <div class="stat-label">Total Conversations</div>
+        </div>
+      </div>
+
+      <div class="glass-card" id="hotel-info-card">
+        <h3 style="font-size:16px;margin-bottom:16px;">🏨 Hotel Information</h3>
+        <div id="hotel-info-body" style="color:var(--text-muted);font-size:14px;">Loading…</div>
+      </div>
+    </div>
+
+    <!-- ── ROOMS ── -->
+    <div class="tab-content" id="content-rooms">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Room Management</div>
+          <div class="section-subtitle">Manage room inventory and availability</div>
+        </div>
+        <button class="btn btn-primary" onclick="openAddRoom()">＋ Add Room</button>
+      </div>
+      <div class="table-wrapper">
+        <table id="rooms-table">
+          <thead>
+            <tr>
+              <th>Room</th><th>Type</th><th>Price/Night</th><th>Bed</th><th>View</th>
+              <th>Max Guests</th><th>Status</th><th>Available From</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="rooms-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── FAQs ── -->
+    <div class="tab-content" id="content-faqs">
+      <div class="section-header">
+        <div>
+          <div class="section-title">FAQ Management</div>
+          <div class="section-subtitle">Manage the bot's knowledge base</div>
+        </div>
+        <button class="btn btn-primary" onclick="openAddFaq()">＋ Add FAQ</button>
+      </div>
+      <div id="faqs-list"></div>
+    </div>
+
+    <!-- ── CONVERSATIONS ── -->
+    <div class="tab-content" id="content-logs">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Conversation Logs</div>
+          <div class="section-subtitle">All WhatsApp conversations handled by the bot</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="loadLogs()">↻ Refresh</button>
+      </div>
+      <div id="logs-container"></div>
+    </div>
+
+    <!-- ── TEST BOT ── -->
+    <div class="tab-content" id="content-test">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Bot Tester</div>
+          <div class="section-subtitle">Test the bot without WhatsApp — simulates a guest conversation</div>
+        </div>
+      </div>
+      <div class="glass-card">
+        <div class="form-group">
+          <label class="form-label">Your Phone Number (simulated)</label>
+          <input type="text" id="test-phone" value="+919876543210" />
+        </div>
+        <div id="test-chat" style="min-height:200px;margin-bottom:16px;display:flex;flex-direction:column;gap:8px;"></div>
+        <div style="display:flex;gap:10px;">
+          <input type="text" id="test-msg" placeholder="Type your message…" style="flex:1;" onkeydown="if(event.key==='Enter')sendTestMsg()" />
+          <button class="btn btn-primary" onclick="sendTestMsg()">Send ✈️</button>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-ghost btn-sm" onclick="fillMsg('Is a deluxe room available tonight?')">Deluxe room?</button>
+          <button class="btn btn-ghost btn-sm" onclick="fillMsg('What time is check-in?')">Check-in time?</button>
+          <button class="btn btn-ghost btn-sm" onclick="fillMsg('How much does a suite cost?')">Suite price?</button>
+          <button class="btn btn-ghost btn-sm" onclick="fillMsg('Do you have parking?')">Parking?</button>
+          <button class="btn btn-ghost btn-sm" onclick="fillMsg('What amenities do you have?')">Amenities?</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ── Add/Edit Room Modal ── -->
+<div class="modal-overlay" id="room-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="room-modal-title">Add Room</div>
+      <button class="modal-close" onclick="closeModal('room-modal')">✕</button>
+    </div>
+    <form id="room-form" onsubmit="submitRoom(event)">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Room ID / Number</label>
+          <input type="text" id="r-id" placeholder="e.g. 401" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Type</label>
+          <select id="r-type">
+            <option>Standard</option><option>Deluxe</option><option>Suite</option><option>Presidential</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Price per Night (₹)</label>
+          <input type="number" id="r-price" placeholder="5000" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Max Occupancy</label>
+          <input type="number" id="r-occupancy" placeholder="2" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Bed Type</label>
+          <input type="text" id="r-bed" placeholder="King" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">View</label>
+          <input type="text" id="r-view" placeholder="Sea View" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select id="r-status">
+            <option value="available">Available</option>
+            <option value="occupied">Occupied</option>
+            <option value="maintenance">Maintenance</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Available From</label>
+          <input type="date" id="r-date" required />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Features (comma-separated)</label>
+        <input type="text" id="r-features" placeholder="AC, TV, Wi-Fi, Balcony" />
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button type="submit" class="btn btn-primary">Save Room</button>
+        <button type="button" class="btn btn-ghost" onclick="closeModal('room-modal')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Add FAQ Modal ── -->
+<div class="modal-overlay" id="faq-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Add FAQ</div>
+      <button class="modal-close" onclick="closeModal('faq-modal')">✕</button>
+    </div>
+    <form onsubmit="submitFaq(event)">
+      <div class="form-group">
+        <label class="form-label">Question</label>
+        <input type="text" id="faq-q" placeholder="e.g. Do you have a gym?" required />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Answer</label>
+        <textarea id="faq-a" placeholder="Yes, our gym is open from 6 AM to 10 PM…" required></textarea>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button type="submit" class="btn btn-primary">Add FAQ</button>
+        <button type="button" class="btn btn-ghost" onclick="closeModal('faq-modal')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

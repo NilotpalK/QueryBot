@@ -1,0 +1,143 @@
+{
+  "hotel": {
+    "name": "The Grand Palace Hotel",
+    "address": "123 Marine Drive, Mumbai, Maharashtra 400001",
+    "phone": "+91 22 1234 5678",
+    "email": "info@grandpalacehotel.com",
+    "website": "www.grandpalacehotel.com",
+    "check_in_time": "2:00 PM",
+    "check_out_time": "12:00 PM (Noon)",
+    "amenities": [
+      "Free Wi-Fi",
+      "Swimming Pool",
+      "Gym & Spa",
+      "Rooftop Restaurant",
+      "24/7 Room Service",
+      "Airport Shuttle",
+      "Valet Parking",
+      "Business Center"
+    ],
+    "cancellation_policy": "Free cancellation up to 24 hours before check-in. After that, one night's charge applies.",
+    "pet_policy": "Pets are not allowed.",
+    "smoking_policy": "All rooms are non-smoking. Designated smoking areas are available near the pool deck.",
+    "extra_bed_charge": "₹1,500 per night",
+    "breakfast_included": false,
+    "breakfast_charge": "₹800 per person per day (optional add-on)"
+  },
+  "rooms": [
+    {
+      "id": "101",
+      "type": "Standard",
+      "floor": 1,
+      "price_per_night": 3500,
+      "max_occupancy": 2,
+      "bed_type": "Double",
+      "view": "City View",
+      "status": "available",
+      "available_from": "2026-03-19",
+      "features": ["AC", "TV", "Wi-Fi", "Hot Water", "Mini Fridge"]
+    },
+    {
+      "id": "102",
+      "type": "Standard",
+      "floor": 1,
+      "price_per_night": 3500,
+      "max_occupancy": 2,
+      "bed_type": "Twin",
+      "view": "City View",
+      "status": "occupied",
+      "available_from": "2026-03-22",
+      "features": ["AC", "TV", "Wi-Fi", "Hot Water", "Mini Fridge"]
+    },
+    {
+      "id": "201",
+      "type": "Deluxe",
+      "floor": 2,
+      "price_per_night": 5500,
+      "max_occupancy": 2,
+      "bed_type": "King",
+      "view": "Sea View",
+      "status": "available",
+      "available_from": "2026-03-19",
+      "features": ["AC", "Smart TV", "Wi-Fi", "Bathtub", "Mini Bar", "Balcony", "Sea View"]
+    },
+    {
+      "id": "202",
+      "type": "Deluxe",
+      "floor": 2,
+      "price_per_night": 5500,
+      "max_occupancy": 3,
+      "bed_type": "King + Sofa Bed",
+      "view": "Sea View",
+      "status": "occupied",
+      "available_from": "2026-03-21",
+      "features": ["AC", "Smart TV", "Wi-Fi", "Bathtub", "Mini Bar", "Balcony", "Sea View"]
+    },
+    {
+      "id": "301",
+      "type": "Suite",
+      "floor": 3,
+      "price_per_night": 10000,
+      "max_occupancy": 4,
+      "bed_type": "King + Living Room",
+      "view": "Panoramic Sea View",
+      "status": "available",
+      "available_from": "2026-03-19",
+      "features": ["AC", "Smart TV", "Wi-Fi", "Jacuzzi", "Full Bar", "Private Balcony", "Dining Area", "Butler Service"]
+    },
+    {
+      "id": "302",
+      "type": "Suite",
+      "floor": 3,
+      "price_per_night": 10000,
+      "max_occupancy": 4,
+      "bed_type": "King + Living Room",
+      "view": "Panoramic Sea View",
+      "status": "maintenance",
+      "available_from": "2026-03-25",
+      "features": ["AC", "Smart TV", "Wi-Fi", "Jacuzzi", "Full Bar", "Private Balcony", "Dining Area", "Butler Service"]
+    }
+  ],
+  "faqs": [
+    {
+      "id": "f1",
+      "question": "What are your check-in and check-out times?",
+      "answer": "Check-in is at 2:00 PM and check-out is at 12:00 PM (Noon). Early check-in and late check-out can be requested based on availability."
+    },
+    {
+      "id": "f2",
+      "question": "Is breakfast included?",
+      "answer": "Breakfast is not included by default but can be added for ₹800 per person per day. Our rooftop restaurant offers a full buffet from 7 AM to 10:30 AM."
+    },
+    {
+      "id": "f3",
+      "question": "Do you have parking?",
+      "answer": "Yes, we offer complimentary valet parking for all guests."
+    },
+    {
+      "id": "f4",
+      "question": "Is there an airport shuttle?",
+      "answer": "Yes! We provide airport shuttle service to and from Chhatrapati Shivaji Maharaj International Airport. Please inform us of your flight details at least 24 hours in advance."
+    },
+    {
+      "id": "f5",
+      "question": "What is your cancellation policy?",
+      "answer": "Free cancellation up to 24 hours before check-in. After that, one night's charge applies as a cancellation fee."
+    },
+    {
+      "id": "f6",
+      "question": "Do you have a swimming pool?",
+      "answer": "Yes, our outdoor swimming pool is open from 6 AM to 10 PM. Towels are provided complimentarily."
+    },
+    {
+      "id": "f7",
+      "question": "How do I make a reservation?",
+      "answer": "You can book directly by contacting our front desk at +91 22 1234 5678, via email at info@grandpalacehotel.com, or through our website. We also accept walk-in bookings subject to availability."
+    },
+    {
+      "id": "f8",
+      "question": "What payment methods do you accept?",
+      "answer": "We accept all major credit/debit cards (Visa, Mastercard, RuPay), UPI payments, net banking, and cash."
+    }
+  ]
+}
