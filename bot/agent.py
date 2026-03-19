@@ -78,6 +78,22 @@ def _build_system_prompt() -> str:
             extra_info_lines.append(f"{label}: {hotel[key]}")
     extra_info = "\n".join(extra_info_lines)
 
+    available_summary = json.dumps(
+        [
+            {
+                "id": r["id"],
+                "name": r.get("name", r["id"]),
+                "type": r["type"],
+                "price_weekday": r.get("price_per_night_weekday", r.get("price_per_night")),
+                "price_weekend": r.get("price_per_night_weekend", r.get("price_per_night")),
+                "view": r["view"],
+                "bed_type": r["bed_type"],
+            }
+            for r in available
+        ],
+        indent=2,
+    )
+
     prompt = f"""You are a friendly, professional concierge bot for {hotel['name']}.
 Your job is to assist guests over WhatsApp by answering their questions clearly and helpfully.
 
@@ -100,7 +116,7 @@ Breakfast: {'Included' if hotel['breakfast_included'] else f"Not included. {hote
 {chr(10).join(room_summary_lines)}
 
 === CURRENTLY AVAILABLE UNITS ({len(available)}) ===
-{json.dumps([{{'id': r['id'], 'name': r.get('name', r['id']), 'type': r['type'], 'price_weekday': r.get('price_per_night_weekday', r.get('price_per_night')), 'price_weekend': r.get('price_per_night_weekend', r.get('price_per_night')), 'view': r['view'], 'bed_type': r['bed_type']}} for r in available], indent=2)}
+{available_summary}
 
 === FAQS ===
 {faq_lines}
