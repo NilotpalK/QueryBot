@@ -37,7 +37,7 @@ async def whatsapp_webhook(
 
     print(f"[Webhook] Message from {sender}: {message}")
 
-    reply = get_reply(phone_number=sender, user_message=message)
+    reply = await get_reply(phone_number=sender, user_message=message)
 
     print(f"[Webhook] Reply to {sender}: {reply}")
 
@@ -64,5 +64,5 @@ async def test_webhook(request: Request):
     if not message:
         raise HTTPException(status_code=400, detail="'message' is required")
 
-    reply = get_reply(phone_number=phone, user_message=message)
+    reply = await get_reply(phone_number=phone, user_message=message)
     return {"phone": phone, "message": message, "reply": reply}

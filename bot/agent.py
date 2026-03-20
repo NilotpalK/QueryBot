@@ -1,8 +1,8 @@
 import os
 import json
 import httpx
-from collections import defaultdict, deque
 from datetime import datetime
+from bson.objectid import ObjectId
 
 from bot.hotel_service import (
     get_hotel_info,
@@ -10,23 +10,50 @@ from bot.hotel_service import (
     get_available_rooms,
     get_all_rooms,
 )
+from bot.database import get_db
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "mistralai/mistral-7b-instruct")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-# Per-number conversation history (keeps last 10 exchanges)
-_sessions: dict[str, deque] = defaultdict(lambda: deque(maxlen=20))
-
-# ── Conversation log (for admin) ────────────────────────────────────────────
-_conversation_log: list[dict] = []
+MAX_HISTORY = 20  # max messages per session
 
 
-def _build_system_prompt() -> str:
-    hotel = get_hotel_info()
-    rooms = get_all_rooms()
-    faqs = get_all_faqs()
-    available = get_available_rooms()
+# ── Session helpers (async MongoDB) ──────────────────────────────────────────
+
+async def _get_history(phone_number: str) -> list[dict]:
+    doc = await get_db()["sessions"].find_one({"phone": phone_number})
+    return doc["messages"] if doc else []
+
+
+async def _save_history(phone_number: str, messages: list[dict]):
+    trimmed = messages[-MAX_HISTORY:]
+    db = get_db()
+    existing = await db["sessions"].find_one({"phone": phone_number}, {"_id": 1})
+    now = datetime.now().isoformat()
+    if existing:
+        # Update in place — never change _id
+        await db["sessions"].update_one(
+            {"phone": phone_number},
+            {"$set": {"messages": trimmed, "updated_at": now}},
+        )
+    else:
+        # New session — generate string ObjectId
+        await db["sessions"].insert_one({
+            "_id": str(ObjectId()),
+            "phone": phone_number,
+            "messages": trimmed,
+            "updated_at": now,
+        })
+
+
+# ── System Prompt ─────────────────────────────────────────────────────────────
+
+async def _build_system_prompt() -> str:
+    hotel = await get_hotel_info()
+    rooms = await get_all_rooms()
+    faqs = await get_all_faqs()
+    available = await get_available_rooms()
 
     # Summarise room/unit inventory
     room_summary_lines = []
@@ -37,7 +64,6 @@ def _build_system_prompt() -> str:
             "maintenance": "🔧 Maintenance",
         }.get(r["status"], r["status"].title())
 
-        # Support both old single-price and new weekday/weekend pricing
         if "price_per_night_weekday" in r:
             price_str = f"₹{r['price_per_night_weekday']} (weekday) / ₹{r['price_per_night_weekend']} (weekend)"
         else:
@@ -45,7 +71,6 @@ def _build_system_prompt() -> str:
 
         name = r.get("name", r["id"])
         unit_type = r.get("type", "")
-        style = r.get("style", "")
         kitchen_info = f", Kitchen: {r['kitchen_type']}" if r.get("kitchen_type") else ""
         check_times = ""
         if r.get("check_in_time") and r.get("check_out_time"):
@@ -67,7 +92,6 @@ def _build_system_prompt() -> str:
 
     amenities_str = ", ".join(hotel.get("amenities", []))
 
-    # Build extra hotel fields if present
     extra_info_lines = []
     for key in ["instagram", "website", "airbnb_profile", "host_status",
                  "couple_friendly", "government_id_required", "minimum_age",
@@ -94,7 +118,7 @@ def _build_system_prompt() -> str:
         indent=2,
     )
 
-    prompt = f"""You are a friendly, professional concierge bot for {hotel['name']}.
+    return f"""You are a friendly, professional concierge bot for {hotel['name']}.
 Your job is to assist guests over WhatsApp by answering their questions clearly and helpfully.
 
 === HOTEL / HOMESTAY INFO ===
@@ -132,60 +156,60 @@ Breakfast: {'Included' if hotel['breakfast_included'] else f"Not included. {hote
 7. Keep responses short for mobile screens (2-4 sentences max, unless listing details).
 8. Today's date is {datetime.now().strftime('%B %d, %Y')}.
 """
-    return prompt
 
 
-def get_reply(phone_number: str, user_message: str) -> str:
+# ── Main reply function ───────────────────────────────────────────────────────
+
+async def get_reply(phone_number: str, user_message: str) -> str:
     """
     Given an incoming WhatsApp message, returns the AI reply.
-    Maintains per-number conversation history.
+    Maintains per-number conversation history in MongoDB.
     """
-    history = _sessions[phone_number]
+    history = await _get_history(phone_number)
 
-    # Add user message to history
     history.append({"role": "user", "content": user_message})
 
-    messages = [{"role": "system", "content": _build_system_prompt()}]
-    messages.extend(list(history))
+    system_prompt = await _build_system_prompt()
+    messages = [{"role": "system", "content": system_prompt}] + history
 
     try:
-        response = httpx.post(
-            OPENROUTER_URL,
-            headers={
-                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://querybot.hotel",
-                "X-Title": "Hotel Query Bot",
-            },
-            json={
-                "model": OPENROUTER_MODEL,
-                "messages": messages,
-                "max_tokens": 300,
-                "temperature": 0.5,
-            },
-            timeout=30,
-        )
-        response.raise_for_status()
-        data = response.json()
-        reply = data["choices"][0]["message"]["content"].strip()
+        async with httpx.AsyncClient(timeout=30) as client:
+            response = await client.post(
+                OPENROUTER_URL,
+                headers={
+                    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                    "Content-Type": "application/json",
+                    "HTTP-Referer": "https://querybot.hotel",
+                    "X-Title": "Hotel Query Bot",
+                },
+                json={
+                    "model": OPENROUTER_MODEL,
+                    "messages": messages,
+                    "max_tokens": 300,
+                    "temperature": 0.5,
+                },
+            )
+            response.raise_for_status()
+            data = response.json()
+            reply = data["choices"][0]["message"]["content"].strip()
     except httpx.HTTPStatusError as e:
         reply = (
             "Sorry, I'm having trouble connecting right now. "
-            "Please call us directly at the hotel number for immediate assistance."
+            "Please contact us via Instagram for immediate assistance."
         )
         print(f"[Agent Error] {e} | Response body: {e.response.text}")
     except Exception as e:
         reply = (
             "Sorry, I'm having trouble connecting right now. "
-            "Please call us directly at the hotel number for immediate assistance."
+            "Please contact us via Instagram for immediate assistance."
         )
         print(f"[Agent Error] {e}")
 
-    # Add assistant reply to history
     history.append({"role": "assistant", "content": reply})
+    await _save_history(phone_number, history)
 
-    # Log the conversation
-    _conversation_log.append({
+    await get_db()["conversation_logs"].insert_one({
+        "_id": str(ObjectId()),
         "phone": phone_number,
         "timestamp": datetime.now().isoformat(),
         "user": user_message,
@@ -195,10 +219,12 @@ def get_reply(phone_number: str, user_message: str) -> str:
     return reply
 
 
-def get_conversation_log() -> list[dict]:
-    return list(reversed(_conversation_log))
+async def get_conversation_log() -> list[dict]:
+    cursor = get_db()["conversation_logs"].find(
+        {}, {"_id": 0}
+    ).sort("timestamp", -1).limit(200)
+    return await cursor.to_list(length=200)
 
 
-def clear_session(phone_number: str):
-    if phone_number in _sessions:
-        del _sessions[phone_number]
+async def clear_session(phone_number: str):
+    await get_db()["sessions"].delete_one({"phone": phone_number})
