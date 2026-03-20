@@ -42,9 +42,19 @@ async def get_all_rooms() -> list[dict]:
 async def get_available_rooms(check_date: Optional[str] = None) -> list[dict]:
     rooms = await get_all_rooms()
     target = check_date or str(date.today())
+
+    # Get rooms booked on target date
+    cursor = get_db()["bookings"].find(
+        {"check_in": {"$lte": target}, "check_out": {"$gt": target}},
+        {"room_id": 1}
+    )
+    booked_ids = {b["room_id"] for b in await cursor.to_list(length=500)}
+
     return [
         r for r in rooms
-        if r["status"] == "available" and r["available_from"] <= target
+        if r["status"] == "available"
+        and r["available_from"] <= target
+        and r["id"] not in booked_ids
     ]
 
 

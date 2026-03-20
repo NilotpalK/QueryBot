@@ -51,6 +51,7 @@
   <!-- Navigation Tabs -->
   <nav class="nav">
     <button class="tab-btn active" id="tab-overview" onclick="switchTab('overview')">📊 Overview</button>
+    <button class="tab-btn" id="tab-bookings" onclick="switchTab('bookings')">📅 Bookings</button>
     <button class="tab-btn" id="tab-rooms" onclick="switchTab('rooms')">🛏️ Rooms</button>
     <button class="tab-btn" id="tab-faqs" onclick="switchTab('faqs')">❓ FAQs</button>
     <button class="tab-btn" id="tab-logs" onclick="switchTab('logs')">💬 Conversations <span class="badge" id="logs-badge">0</span></button>
@@ -59,6 +60,27 @@
 
   <!-- Main Content -->
   <main class="main">
+
+    <!-- ── BOOKINGS ── -->
+    <div class="tab-content" id="content-bookings">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Booking Calendar</div>
+          <div class="section-subtitle">View and manage unit bookings week by week</div>
+        </div>
+        <button class="btn btn-primary" onclick="openAddBooking()">＋ Add Booking</button>
+      </div>
+
+      <!-- Week navigator -->
+      <div class="cal-nav">
+        <button class="btn btn-ghost btn-sm" onclick="shiftWeek(-1)">← Prev</button>
+        <span id="cal-week-label" style="font-weight:600;font-size:15px;"></span>
+        <button class="btn btn-ghost btn-sm" onclick="shiftWeek(1)">Next →</button>
+      </div>
+
+      <!-- Calendar grid -->
+      <div class="booking-calendar" id="booking-calendar"></div>
+    </div>
 
     <!-- ── OVERVIEW ── -->
     <div class="tab-content active" id="content-overview">
@@ -257,6 +279,63 @@
         <button type="button" class="btn btn-ghost" onclick="closeModal('faq-modal')">Cancel</button>
       </div>
     </form>
+  </div>
+</div>
+
+<!-- ── Add Booking Modal ── -->
+<div class="modal-overlay" id="booking-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Add Booking</div>
+      <button class="modal-close" onclick="closeModal('booking-modal')">✕</button>
+    </div>
+    <form onsubmit="submitBooking(event)">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Unit</label>
+          <select id="bk-room"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Guest Name</label>
+          <input type="text" id="bk-name" placeholder="e.g. Priya Sharma" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Guest Phone</label>
+          <input type="text" id="bk-phone" placeholder="+919876543210" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Check-in Date</label>
+          <input type="date" id="bk-checkin" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Check-out Date</label>
+          <input type="date" id="bk-checkout" required />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notes (optional)</label>
+        <input type="text" id="bk-notes" placeholder="Late check-in, early checkout, etc." />
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;">
+        <button type="submit" class="btn btn-primary">Save Booking</button>
+        <button type="button" class="btn btn-ghost" onclick="closeModal('booking-modal')">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Booking Detail Modal ── -->
+<div class="modal-overlay" id="booking-detail-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Booking Details</div>
+      <button class="modal-close" onclick="closeModal('booking-detail-modal')">✕</button>
+    </div>
+    <div id="booking-detail-body" style="color:var(--text-muted);font-size:14px;line-height:2;"></div>
+    <div style="display:flex;gap:10px;margin-top:20px;">
+      <button class="btn btn-danger" id="booking-cancel-btn">🗑 Cancel Booking</button>
+      <button class="btn btn-ghost" onclick="closeModal('booking-detail-modal')">Close</button>
+    </div>
   </div>
 </div>
 

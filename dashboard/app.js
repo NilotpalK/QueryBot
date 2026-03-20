@@ -66,7 +66,7 @@ function toast(msg, type = 'info') {
 // ─────────────────────────────────────────────────────────────────────────────
 // Tab switching
 // ─────────────────────────────────────────────────────────────────────────────
-const TABS = ['overview', 'rooms', 'faqs', 'logs', 'test'];
+const TABS = ['overview', 'bookings', 'rooms', 'faqs', 'logs', 'test'];
 
 function switchTab(tab) {
   TABS.forEach(t => {
@@ -76,6 +76,7 @@ function switchTab(tab) {
   if (tab === 'logs') loadLogs();
   if (tab === 'rooms') loadRooms();
   if (tab === 'faqs') loadFaqs();
+  if (tab === 'bookings') loadBookings();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -456,4 +457,160 @@ async function updateStats() {
     document.getElementById('stat-convs').textContent = logs.length;
     document.getElementById('logs-badge').textContent = logs.length;
   } catch {}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Booking Calendar
+// ─────────────────────────────────────────────────────────────────────────────
+
+let _calWeekOffset = 0;   // 0 = current week, -1 = last week, +1 = next week
+let _allBookings = [];
+let _allRooms = [];
+
+function getWeekDates(offset = 0) {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - ((day + 6) % 7) + offset * 7);
+  monday.setHours(0, 0, 0, 0);
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    return d;
+  });
+}
+
+function toISO(date) {
+  return date.toISOString().split('T')[0];
+}
+
+async function loadBookings() {
+  try {
+    [_allBookings, _allRooms] = await Promise.all([
+      apiFetch('/admin/bookings'),
+      apiFetch('/admin/rooms'),
+    ]);
+    renderCalendar();
+  } catch (e) {
+    toast('Failed to load bookings: ' + e.message, 'error');
+  }
+}
+
+function shiftWeek(dir) {
+  _calWeekOffset += dir;
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const days = getWeekDates(_calWeekOffset);
+  const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const today = toISO(new Date());
+
+  // Update label
+  const label = `${days[0].toLocaleDateString('en-IN', { day:'2-digit', month:'short' })} – ${days[6].toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' })}`;
+  document.getElementById('cal-week-label').textContent = label;
+
+  // Build header row
+  let html = `<div class="cal-grid" style="grid-template-columns: 180px repeat(7, 1fr);">`;
+  html += `<div class="cal-header-cell">Unit</div>`;
+  days.forEach((d, i) => {
+    const iso = toISO(d);
+    const isToday = iso === today;
+    html += `<div class="cal-header-cell${isToday ? ' cal-today-header' : ''}">${dayNames[i]}<br><small>${d.getDate()} ${d.toLocaleString('en-IN',{month:'short'})}</small></div>`;
+  });
+
+  // Build room rows
+  _allRooms.forEach(room => {
+    html += `<div class="cal-room-cell">${escHtml(room.name || room.id)}<br><small style="color:var(--text-subtle)">${room.type}</small></div>`;
+
+    days.forEach(d => {
+      const iso = toISO(d);
+      const isToday = iso === today;
+      // Find booking that covers this day for this room
+      const booking = _allBookings.find(b =>
+        b.room_id === room.id && b.check_in <= iso && b.check_out > iso
+      );
+      if (booking) {
+        html += `<div class="cal-cell cal-booked${isToday ? ' cal-today' : ''}" onclick="openBookingDetail('${booking._id}')" title="${escHtml(booking.guest_name)}">
+          <span class="cal-guest">${escHtml(booking.guest_name)}</span>
+        </div>`;
+      } else {
+        const isUnavailable = room.status !== 'available' || room.available_from > iso;
+        html += `<div class="cal-cell ${isUnavailable ? 'cal-unavailable' : 'cal-free'}${isToday ? ' cal-today' : ''}"></div>`;
+      }
+    });
+  });
+
+  html += `</div>`;
+  document.getElementById('booking-calendar').innerHTML = html;
+}
+
+async function openAddBooking() {
+  // Populate room dropdown
+  const sel = document.getElementById('bk-room');
+  sel.innerHTML = _allRooms.map(r => `<option value="${r.id}">${escHtml(r.name || r.id)} (${r.type})</option>`).join('');
+  // Default dates to current week start
+  const days = getWeekDates(_calWeekOffset);
+  document.getElementById('bk-checkin').value = toISO(days[0]);
+  const checkout = new Date(days[0]); checkout.setDate(checkout.getDate() + 1);
+  document.getElementById('bk-checkout').value = toISO(checkout);
+  document.getElementById('bk-name').value = '';
+  document.getElementById('bk-phone').value = '';
+  document.getElementById('bk-notes').value = '';
+  openModal('booking-modal');
+}
+
+async function submitBooking(e) {
+  e.preventDefault();
+  const checkin = document.getElementById('bk-checkin').value;
+  const checkout = document.getElementById('bk-checkout').value;
+  if (checkout <= checkin) {
+    toast('Check-out must be after check-in', 'error');
+    return;
+  }
+  const payload = {
+    room_id: document.getElementById('bk-room').value,
+    guest_name: document.getElementById('bk-name').value.trim(),
+    guest_phone: document.getElementById('bk-phone').value.trim(),
+    check_in: checkin,
+    check_out: checkout,
+    notes: document.getElementById('bk-notes').value.trim(),
+  };
+  try {
+    await apiFetch('/admin/bookings', { method: 'POST', body: JSON.stringify(payload) });
+    toast('✅ Booking saved');
+    closeModal('booking-modal');
+    loadBookings();
+  } catch (e) {
+    toast('Failed to save booking: ' + e.message, 'error');
+  }
+}
+
+function openBookingDetail(bookingId) {
+  const bk = _allBookings.find(b => b._id === bookingId);
+  if (!bk) return;
+  const room = _allRooms.find(r => r.id === bk.room_id);
+  document.getElementById('booking-detail-body').innerHTML = `
+    <div><strong>Unit:</strong> ${escHtml(room ? (room.name || room.id) : bk.room_id)}</div>
+    <div><strong>Guest:</strong> ${escHtml(bk.guest_name)}</div>
+    <div><strong>Phone:</strong> ${escHtml(bk.guest_phone || '—')}</div>
+    <div><strong>Check-in:</strong> ${bk.check_in}</div>
+    <div><strong>Check-out:</strong> ${bk.check_out}</div>
+    ${bk.notes ? `<div><strong>Notes:</strong> ${escHtml(bk.notes)}</div>` : ''}
+    <div style="margin-top:8px;font-size:12px;color:var(--text-subtle)">Booking ID: ${bk._id}</div>
+  `;
+  document.getElementById('booking-cancel-btn').onclick = () => cancelBooking(bookingId);
+  openModal('booking-detail-modal');
+}
+
+async function cancelBooking(bookingId) {
+  if (!confirm('Cancel this booking? This cannot be undone.')) return;
+  try {
+    await apiFetch(`/admin/bookings/${bookingId}`, { method: 'DELETE' });
+    toast('🗑 Booking cancelled');
+    closeModal('booking-detail-modal');
+    loadBookings();
+  } catch (e) {
+    toast('Failed to cancel booking', 'error');
+  }
 }

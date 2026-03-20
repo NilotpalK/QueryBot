@@ -97,3 +97,40 @@ async def conversation_logs(auth=Depends(verify_admin)):
 async def reset_session(phone: str, auth=Depends(verify_admin)):
     await clear_session(phone)
     return {"cleared": phone}
+
+
+# ── Bookings ─────────────────────────────────────────────────────────────────
+
+@router.get("/bookings")
+async def list_bookings(room_id: str = None, auth=Depends(verify_admin)):
+    from bot.database import get_db
+    query = {}
+    if room_id:
+        query["room_id"] = room_id
+    cursor = get_db()["bookings"].find(query, {"_id": 1, "room_id": 1, "guest_name": 1,
+                                              "guest_phone": 1, "check_in": 1, "check_out": 1,
+                                              "notes": 1, "created_at": 1})
+    return await cursor.to_list(length=500)
+
+
+@router.post("/bookings")
+async def create_booking(booking: dict, auth=Depends(verify_admin)):
+    from bot.database import get_db
+    from bson.objectid import ObjectId
+    from datetime import datetime
+    required = {"room_id", "guest_name", "check_in", "check_out"}
+    if not required.issubset(booking):
+        raise HTTPException(status_code=400, detail=f"Missing fields: {required - booking.keys()}")
+    booking["_id"] = str(ObjectId())
+    booking["created_at"] = datetime.now().isoformat()
+    await get_db()["bookings"].insert_one(booking)
+    return booking
+
+
+@router.delete("/bookings/{booking_id}")
+async def cancel_booking(booking_id: str, auth=Depends(verify_admin)):
+    from bot.database import get_db
+    result = await get_db()["bookings"].delete_one({"_id": booking_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Booking not found")
+    return {"cancelled": booking_id}
